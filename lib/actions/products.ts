@@ -1,6 +1,6 @@
 "use server";
 
-import { db, products, cards, categories } from "@/lib/db";
+import { db, products, cards, categories, orders } from "@/lib/db";
 import { eq, and, desc, asc, sql, ilike, or, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import {
@@ -306,10 +306,10 @@ export async function deleteProduct(id: string) {
     // 检查是否有未完成的订单
     const hasActiveOrders = await db.query.orders.findFirst({
       where: and(
-        eq(products.id, id),
+        eq(orders.productId, id),
         or(
-          eq(products.id, "pending"),
-          eq(products.id, "paid")
+          eq(orders.status, "pending"),
+          eq(orders.status, "paid")
         )
       ),
     });
