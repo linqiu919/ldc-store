@@ -2,7 +2,9 @@
 
 基于 Next.js 16 的虚拟商品自动发卡平台，支持 Linux DO Credit 积分支付。
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FYOUR_USERNAME%2Fldc-store&env=DATABASE_URL,AUTH_SECRET,LDC_PID,LDC_SECRET&envDescription=Required%20environment%20variables&envLink=https%3A%2F%2Fgithub.com%2FYOUR_USERNAME%2Fldc-store%23environment-variables&project-name=ldc-store&repository-name=ldc-store)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fgptkong%2Fldc-store&env=DATABASE_URL,AUTH_SECRET,ADMIN_PASSWORD,LDC_PID,LDC_SECRET,LINUXDO_CLIENT_ID,LINUXDO_CLIENT_SECRET&envDescription=DATABASE_URL%3A%20PostgreSQL%20%7C%20AUTH_SECRET%3A%20openssl%20rand%20-base64%2032%20%7C%20ADMIN_PASSWORD%3A%20管理员密码%20%7C%20LDC_PID%2FLDC_SECRET%3A%20支付凭证%20%7C%20LINUXDO_CLIENT_ID%2FLINUXDO_CLIENT_SECRET%3A%20OAuth登录凭证&envLink=https%3A%2F%2Fgithub.com%2Fgptkong%2Fldc-store%2Fblob%2Fmain%2Fdocs%2FDEPLOY.md&project-name=ldc-store&repository-name=ldc-store)
+
+> 📚 **详细部署指南**: [docs/DEPLOY.md](./docs/DEPLOY.md)
 
 ## ✨ 特性
 
@@ -35,7 +37,7 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ldc-store.git
+git clone https://github.com/gptkong/ldc-store.git
 cd ldc-store
 pnpm install
 ```
@@ -106,23 +108,22 @@ pnpm dev
 
 ## 🔧 环境变量说明
 
-| 变量 | 必填 | 说明 |
-|------|------|------|
-| `DATABASE_URL` | ✅ | PostgreSQL 连接字符串 |
-| `AUTH_SECRET` | ✅ | NextAuth 加密密钥 |
-| `ADMIN_PASSWORD` | ✅ | 管理员登录密码 |
-| `LDC_PID` | ⚠️ | Linux DO Credit Client ID |
-| `LDC_SECRET` | ⚠️ | Linux DO Credit Secret |
-| `LDC_GATEWAY` | ❌ | 支付网关地址（默认官方地址）|
-| `LINUXDO_CLIENT_ID` | ❌ | Linux DO OAuth2 Client ID |
-| `LINUXDO_CLIENT_SECRET` | ❌ | Linux DO OAuth2 Client Secret |
-| `NEXT_PUBLIC_LINUXDO_ENABLED` | ❌ | 是否在登录页显示 OAuth 按钮（设置为 "true" 启用）|
-| `LINUXDO_AUTHORIZATION_URL` | ❌ | OAuth2 授权端点（默认官方地址）|
-| `LINUXDO_TOKEN_URL` | ❌ | OAuth2 Token 端点（默认官方地址）|
-| `LINUXDO_USERINFO_URL` | ❌ | OAuth2 用户信息端点（默认官方地址）|
-| `NEXT_PUBLIC_SITE_NAME` | ❌ | 网站名称（显示在 Header 标题和页面标题中）|
-| `NEXT_PUBLIC_SITE_DESCRIPTION` | ❌ | 网站描述（用于 SEO meta 标签）|
-| `ORDER_EXPIRE_MINUTES` | ❌ | 订单过期时间（默认30分钟）|
+| 变量 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `DATABASE_URL` | ✅ | - | PostgreSQL 连接字符串 |
+| `AUTH_SECRET` | ✅ | - | NextAuth 加密密钥（运行 `openssl rand -base64 32` 生成）|
+| `AUTH_TRUST_HOST` | ✅ | `true` | 信任主机（Vercel 部署必须为 true）|
+| `ADMIN_PASSWORD` | ✅ | - | 管理员登录密码 |
+| `LDC_PID` | ✅ | - | Linux DO Credit Client ID |
+| `LDC_SECRET` | ✅ | - | Linux DO Credit Secret |
+| `LDC_GATEWAY` | ❌ | `https://credit.linux.do/epay` | 支付网关地址 |
+| `LINUXDO_CLIENT_ID` | ✅ | - | Linux DO OAuth2 Client ID（用户登录必须）|
+| `LINUXDO_CLIENT_SECRET` | ✅ | - | Linux DO OAuth2 Client Secret（用户登录必须）|
+| `NEXT_PUBLIC_SITE_NAME` | ❌ | - | 网站名称（显示在 Header 和页面标题）|
+| `NEXT_PUBLIC_SITE_DESCRIPTION` | ❌ | - | 网站描述（用于 SEO）|
+| `ORDER_EXPIRE_MINUTES` | ❌ | `30` | 订单过期时间（分钟）|
+
+> 💡 **提示**: 在 Vercel 部署时，`vercel.json` 已预设了有默认值的变量，你只需配置必填项。
 
 ## 📝 Linux DO Credit 配置
 
@@ -150,7 +151,6 @@ pnpm dev
 ```env
 LINUXDO_CLIENT_ID="your_client_id"
 LINUXDO_CLIENT_SECRET="your_client_secret"
-NEXT_PUBLIC_LINUXDO_ENABLED="true"
 ```
 
 ### 可获取的用户信息
