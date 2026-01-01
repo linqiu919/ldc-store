@@ -7,6 +7,9 @@ import { ChevronLeft } from "lucide-react";
 import { OrderForm } from "./order-form";
 import { renderMarkdownToSafeHtml } from "@/lib/markdown";
 
+// ISR: 每 60 秒重新验证页面缓存
+export const revalidate = 60;
+
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
 }

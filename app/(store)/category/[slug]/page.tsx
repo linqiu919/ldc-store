@@ -6,6 +6,9 @@ import { ProductCard } from "@/components/store/product-card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Package, Grid3X3 } from "lucide-react";
 
+// ISR: 每 60 秒重新验证页面缓存
+export const revalidate = 60;
+
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
 }

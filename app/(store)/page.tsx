@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package } from "lucide-react";
 
+// ISR: 每 60 秒重新验证页面缓存
+// 这样既保持了性能（CDN 缓存），又确保数据在 60 秒内更新
+export const revalidate = 60;
+
 async function ProductList() {
   const products = await getActiveProducts({
     limit: 20,
