@@ -22,6 +22,11 @@
 - 支付成功后自动发放卡密
 - 订单超时自动释放锁定库存
 
+### 🔄 退款功能
+- 用户可申请退款，管理员审核
+- 支持通过代理调用 LDC Credit 退款接口
+- 退款成功后自动回收卡密
+
 ### 📦 库存管理
 - 批量导入卡密（支持换行/逗号分隔）
 - 自动去重检测（输入去重 + 数据库去重）
@@ -146,6 +151,7 @@ pnpm dev
 | `LDC_CLIENT_ID` | ✅ | - | Linux DO Credit Client ID |
 | `LDC_CLIENT_SECRET` | ✅ | - | Linux DO Credit Client Secret |
 | `LDC_GATEWAY` | ❌ | `https://credit.linux.do/epay` | 支付网关地址 |
+| `LDC_PROXY_URL` | ❌ | - | LDC API 代理地址（用于退款功能，绕过 Cloudflare）|
 | `ADMIN_USERNAMES` | ❌ | - | Linux DO 管理员用户名白名单（逗号分隔），命中则授予 `admin` 角色 |
 | `LINUXDO_CLIENT_ID` | ✅ | - | Linux DO OAuth2 Client ID（用户下单/查单必须）|
 | `LINUXDO_CLIENT_SECRET` | ✅ | - | Linux DO OAuth2 Client Secret（用户下单/查单必须）|
@@ -163,6 +169,32 @@ pnpm dev
 3. 配置回调地址:
    - **Notify URL:** `https://your-domain.com/api/payment/notify`
    - **Return URL:** `https://your-domain.com/order/result`
+
+## 🔄 退款功能配置（可选）
+
+由于 Linux DO Credit 的 API 接口受 Cloudflare 保护，从 Vercel 等服务器端直接调用会被拦截。如需启用退款功能，需要配置 API 代理。
+
+### 代理服务
+
+退款代理功能基于 [gptkong/gin-flaresolverr-proxy](https://github.com/gptkong/gin-flaresolverr-proxy) 项目实现，该服务通过 FlareSolverr 绕过 Cloudflare 保护。
+
+> ⚠️ **注意**：代理功能可能会随着 Linux DO Credit 官方接口变更而失效，请关注上游仓库更新。
+
+### 配置步骤
+
+1. 部署 [gin-flaresolverr-proxy](https://github.com/gptkong/gin-flaresolverr-proxy) 服务
+2. 在环境变量中配置代理地址：
+
+```env
+LDC_PROXY_URL="https://your-proxy-domain.com/api"
+```
+
+### 功能说明
+
+| 环境变量配置 | 退款功能 | 说明 |
+|-------------|---------|------|
+| `LDC_PROXY_URL` 未设置 | ❌ 隐藏 | 前后台均不显示退款相关按钮 |
+| `LDC_PROXY_URL` 已配置 | ✅ 启用 | 用户可申请退款，管理员可审批 |
 
 ## 🔑 Linux DO OAuth2 登录配置
 
