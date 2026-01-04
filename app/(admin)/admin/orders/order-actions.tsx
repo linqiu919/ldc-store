@@ -19,9 +19,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, CheckCircle2, Eye, Copy, RotateCcw, XCircle, Loader2 } from "lucide-react";
-import { adminCompleteOrder, approveRefund, rejectRefund } from "@/lib/actions/orders";
+import { MoreHorizontal, CheckCircle2, Eye, Copy, RotateCcw, XCircle, Loader2, Globe } from "lucide-react";
+import { adminCompleteOrder, approveRefund, rejectRefund, getClientRefundData, markOrderRefunded } from "@/lib/actions/orders";
 import { toast } from "sonner";
+import type { RefundMode } from "@/lib/payment/ldc";
 
 interface OrderActionsProps {
   orderId: string;
@@ -29,9 +30,10 @@ interface OrderActionsProps {
   status: string;
   refundReason?: string | null;
   refundEnabled?: boolean;
+  refundMode?: RefundMode;
 }
 
-export function OrderActions({ orderId, orderNo, status, refundReason, refundEnabled = false }: OrderActionsProps) {
+export function OrderActions({ orderId, orderNo, status, refundReason, refundEnabled = false, refundMode = 'disabled' }: OrderActionsProps) {
   const [isPending, startTransition] = useTransition();
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -52,14 +54,97 @@ export function OrderActions({ orderId, orderNo, status, refundReason, refundEna
     });
   };
 
+  /**
+   * 客户端退款：浏览器直接调用 LDC API
+   */
+  const handleClientRefund = async (): Promise<boolean> => {
+    // 1. 获取退款参数
+    const paramsResult = await getClientRefundData(orderId);
+    if (!paramsResult.success || !paramsResult.data) {
+      toast.error(paramsResult.message);
+      return false;
+    }
+
+    const { apiUrl, pid, key, trade_no, money } = paramsResult.data;
+
+    // 2. 浏览器直接调用 LDC API
+    try {
+      toast.info("正在调用支付平台退款接口...");
+      
+      const formData = new URLSearchParams({
+        pid,
+        key,
+        trade_no,
+        money,
+      });
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Accept": "application/json",
+        },
+        body: formData.toString(),
+      });
+
+      const text = await response.text();
+      
+      // 检查是否被 CF 拦截
+      if (text.includes("Just a moment") || text.includes("cloudflare")) {
+        toast.error("被 Cloudflare 拦截，请先在新标签页打开 credit.linux.do 完成验证后重试");
+        // 打开新标签页让用户完成验证
+        window.open("https://credit.linux.do", "_blank");
+        return false;
+      }
+
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        console.error("退款接口返回非 JSON:", text.substring(0, 500));
+        toast.error("支付平台返回格式异常");
+        return false;
+      }
+
+      if (result.code !== 1) {
+        toast.error(`退款失败: ${result.msg || "支付平台返回错误"}`);
+        return false;
+      }
+
+      // 3. 退款成功，更新订单状态
+      const markResult = await markOrderRefunded(orderId, "客户端模式退款成功");
+      if (!markResult.success) {
+        toast.error(`退款成功，但更新订单状态失败: ${markResult.message}`);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("客户端退款失败:", error);
+      toast.error("网络请求失败，请检查网络连接");
+      return false;
+    }
+  };
+
   const handleApproveRefund = () => {
     startTransition(async () => {
-      const result = await approveRefund(orderId);
-      if (result.success) {
-        toast.success(result.message);
-        setRefundDialogOpen(false);
+      let success = false;
+      
+      if (refundMode === 'client') {
+        // 客户端模式：浏览器直接调用 LDC API
+        success = await handleClientRefund();
       } else {
-        toast.error(result.message);
+        // 代理模式：服务端调用
+        const result = await approveRefund(orderId);
+        success = result.success;
+        if (!success) {
+          toast.error(result.message);
+        }
+      }
+      
+      if (success) {
+        toast.success("退款成功");
+        setRefundDialogOpen(false);
       }
     });
   };
@@ -143,16 +228,36 @@ export function OrderActions({ orderId, orderNo, status, refundReason, refundEna
       <Dialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>确认通过退款</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              确认通过退款
+              {refundMode === 'client' && (
+                <span className="inline-flex items-center gap-1 text-xs font-normal bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                  <Globe className="h-3 w-3" />
+                  客户端模式
+                </span>
+              )}
+            </DialogTitle>
             <DialogDescription>
-              通过后将调用支付平台退款接口，退还用户积分
+              {refundMode === 'client' 
+                ? "将通过浏览器直接调用支付平台退款接口（可绕过 CF 验证）"
+                : "通过后将调用支付平台退款接口，退还用户积分"
+              }
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-3">
             <div className="rounded-lg bg-muted p-3 text-sm">
               <p className="font-medium mb-1">退款原因：</p>
               <p className="text-muted-foreground">{refundReason || "未填写"}</p>
             </div>
+            {refundMode === 'client' && (
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
+                <p className="font-medium mb-1">⚠️ 客户端模式说明：</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>如遇 CF 验证，请先访问 credit.linux.do 完成验证后重试</li>
+                  <li>确保浏览器没有开启广告拦截或隐私模式</li>
+                </ul>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
