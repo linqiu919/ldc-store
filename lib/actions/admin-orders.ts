@@ -25,7 +25,6 @@ export interface AdminOrderListItem {
   quantity: number;
   totalAmount: string;
   paymentMethod: PaymentMethod;
-  email: string | null;
   username: string | null;
   userId: string | null;
   status: OrderStatus;
@@ -62,7 +61,6 @@ type AdminOrdersRow = Pick<
   | "quantity"
   | "totalAmount"
   | "paymentMethod"
-  | "email"
   | "username"
   | "userId"
   | "status"
@@ -121,7 +119,6 @@ function serializeAdminOrdersRow(row: AdminOrdersRow): AdminOrderListItem {
     quantity: row.quantity,
     totalAmount: row.totalAmount,
     paymentMethod: row.paymentMethod,
-    email: row.email ?? null,
     username: row.username ?? null,
     userId: row.userId ?? null,
     status: row.status,
@@ -166,7 +163,6 @@ export async function getAdminOrdersPage(input: {
         quantity: true,
         totalAmount: true,
         paymentMethod: true,
-        email: true,
         username: true,
         userId: true,
         status: true,

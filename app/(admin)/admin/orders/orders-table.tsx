@@ -9,6 +9,14 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -178,6 +186,54 @@ function OrdersBulkActionBar({
   );
 }
 
+function OrdersBulkDeleteDialog({
+  open,
+  onOpenChange,
+  selectedCount,
+  isDeleting,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedCount: number;
+  isDeleting: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>确认删除订单</DialogTitle>
+          <DialogDescription>
+            将删除 {selectedCount} 笔订单。该操作不可恢复，请确认后继续。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isDeleting}
+            onClick={() => onOpenChange(false)}
+          >
+            取消
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isDeleting}
+            onClick={onConfirm}
+          >
+            {isDeleting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
+            确认删除
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function OrdersTableView({
   items,
   refundEnabled,
@@ -215,7 +271,6 @@ function OrdersTableView({
             <TableHead className="text-center">数量</TableHead>
             <TableHead className="text-right">金额</TableHead>
             <TableHead>支付方式</TableHead>
-            <TableHead>联系邮箱</TableHead>
             <TableHead className="text-center">状态</TableHead>
             <TableHead>创建时间</TableHead>
             <TableHead className="text-right">操作</TableHead>
@@ -243,9 +298,6 @@ function OrdersTableView({
                 </TableCell>
                 <TableCell>
                   {paymentMethodLabels[order.paymentMethod] || order.paymentMethod}
-                </TableCell>
-                <TableCell className="max-w-[150px] truncate">
-                  {order.email || "-"}
                 </TableCell>
                 <TableCell className="text-center">
                   <Badge className={meta.color}>{meta.label}</Badge>
@@ -283,6 +335,7 @@ export function OrdersTable({
 }) {
   const router = useRouter();
   const [isDeleting, startDeleting] = useTransition();
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const {
     selectedIds,
     selection,
@@ -292,12 +345,16 @@ export function OrdersTable({
     clearSelection,
   } = useOrdersSelection(items);
 
-  const deleteSelected = () => {
+  const openBulkDelete = () => {
     if (selection.selectedCount === 0) return;
+    setBulkDeleteOpen(true);
+  };
 
-    const confirmMessage = `将删除 ${selection.selectedCount} 笔订单。该操作不可恢复，确定继续？`;
-
-    if (!confirm(confirmMessage)) return;
+  const confirmBulkDelete = () => {
+    if (selection.selectedCount === 0) {
+      setBulkDeleteOpen(false);
+      return;
+    }
 
     startDeleting(async () => {
       const result = await deleteAdminOrders(Array.from(selectedIds));
@@ -306,6 +363,8 @@ export function OrdersTable({
         return;
       }
       toast.success(result.message);
+      setBulkDeleteOpen(false);
+      // 为什么这样做：删除会影响服务端列表数据，refresh 触发重新拉取，确保列表/统计即时一致
       clearSelection();
       router.refresh();
     });
@@ -322,10 +381,18 @@ export function OrdersTable({
 
   return (
     <div className="space-y-3">
+      <OrdersBulkDeleteDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        selectedCount={selection.selectedCount}
+        isDeleting={isDeleting}
+        onConfirm={confirmBulkDelete}
+      />
+
       <OrdersBulkActionBar
         selectedCount={selection.selectedCount}
         isDeleting={isDeleting}
-        onDeleteSelected={deleteSelected}
+        onDeleteSelected={openBulkDelete}
         onExportSelected={exportSelected}
         onClearSelection={clearSelection}
       />
