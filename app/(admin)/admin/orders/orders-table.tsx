@@ -18,17 +18,12 @@ import {
 } from "@/components/ui/table";
 import { LocalTime } from "@/components/time/local-time";
 
-import type { OrderStatus } from "@/lib/db";
 import type { RefundMode } from "@/lib/payment/ldc";
 import { deleteAdminOrders, type AdminOrderListItem } from "@/lib/actions/admin-orders";
 
 import { orderStatusConfig, paymentMethodLabels } from "./order-meta";
 import { OrderActions } from "./order-actions";
 import { buildAdminOrdersExportUrl } from "./orders-url";
-
-function isDeletableStatus(status: OrderStatus): boolean {
-  return status === "pending" || status === "expired";
-}
 
 function Checkbox({
   checked,
@@ -300,19 +295,7 @@ export function OrdersTable({
   const deleteSelected = () => {
     if (selection.selectedCount === 0) return;
 
-    const selectedOrders = items.filter((o) => selectedIds.has(o.id));
-    const deletable = selectedOrders.filter((o) => isDeletableStatus(o.status));
-    const protectedCount = selectedOrders.length - deletable.length;
-
-    if (deletable.length === 0) {
-      toast.error("所选订单均不可删除（仅支持删除：待支付/已过期）");
-      return;
-    }
-
-    const confirmMessage =
-      protectedCount > 0
-        ? `将删除 ${deletable.length} 笔订单（跳过 ${protectedCount} 笔不可删除订单）。确定继续？`
-        : `将删除 ${deletable.length} 笔订单。确定继续？`;
+    const confirmMessage = `将删除 ${selection.selectedCount} 笔订单。该操作不可恢复，确定继续？`;
 
     if (!confirm(confirmMessage)) return;
 

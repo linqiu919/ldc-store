@@ -50,8 +50,8 @@ export interface DeleteAdminOrdersResult {
   success: boolean;
   message: string;
   deletedCount?: number;
-  skippedCount?: number;
-  skippedIds?: string[];
+  notFoundCount?: number;
+  notFoundIds?: string[];
 }
 
 type AdminOrdersRow = Pick<
@@ -204,11 +204,6 @@ export async function getAdminOrdersPage(input: {
   };
 }
 
-function isDeletableOrderStatus(status: OrderStatus): boolean {
-  // 为什么这样做：已支付/已完成订单涉及资金与履约记录，删除会破坏审计链路；仅允许删除未支付/已过期的“可回收”订单。
-  return status === "pending" || status === "expired";
-}
-
 export async function deleteAdminOrders(orderIds: string[]): Promise<DeleteAdminOrdersResult> {
   try {
     await requireAdmin();
@@ -228,22 +223,18 @@ export async function deleteAdminOrders(orderIds: string[]): Promise<DeleteAdmin
   try {
     const result = await db.transaction(async (tx) => {
       const found = await tx
-        .select({ id: orders.id, status: orders.status })
+        .select({ id: orders.id })
         .from(orders)
         .where(inArray(orders.id, uniqueIds));
 
-      const deletableIds = found
-        .filter((row) => isDeletableOrderStatus(row.status))
-        .map((row) => row.id);
+      const foundIdSet = new Set(found.map((row) => row.id));
+      const foundIds = Array.from(foundIdSet);
+      const notFoundIds = uniqueIds.filter((id) => !foundIdSet.has(id));
 
-      const skippedIds = found
-        .filter((row) => !isDeletableOrderStatus(row.status))
-        .map((row) => row.id);
-
-      if (deletableIds.length === 0) {
+      if (foundIds.length === 0) {
         return {
           deletedCount: 0,
-          skippedIds,
+          notFoundIds,
         };
       }
 
@@ -255,44 +246,44 @@ export async function deleteAdminOrders(orderIds: string[]): Promise<DeleteAdmin
           orderId: null,
           lockedAt: null,
         })
-        .where(and(eq(cards.status, "locked"), inArray(cards.orderId, deletableIds)));
+        .where(and(eq(cards.status, "locked"), inArray(cards.orderId, foundIds)));
 
       const deleted = await tx
         .delete(orders)
-        .where(inArray(orders.id, deletableIds))
+        .where(inArray(orders.id, foundIds))
         .returning({ id: orders.id });
 
       return {
         deletedCount: deleted.length,
-        skippedIds,
+        notFoundIds,
       };
     });
 
     // 动态页通常无需 revalidate，但保留可兼容未来改为缓存页面的场景
     revalidatePath("/admin/orders");
 
-    const skippedCount = result.skippedIds.length;
     const deletedCount = result.deletedCount;
+    const notFoundCount = result.notFoundIds.length;
 
-    if (deletedCount === 0 && skippedCount > 0) {
+    if (deletedCount === 0) {
       return {
         success: false,
-        message: `所选订单均不可删除（已支付/已完成/退款相关等状态将被保护）`,
+        message: `未删除任何订单（可能已被删除）`,
         deletedCount,
-        skippedCount,
-        skippedIds: result.skippedIds,
+        notFoundCount,
+        notFoundIds: result.notFoundIds,
       };
     }
 
     return {
       success: true,
       message:
-        skippedCount > 0
-          ? `已删除 ${deletedCount} 笔订单（跳过 ${skippedCount} 笔不可删除订单）`
+        notFoundCount > 0
+          ? `已删除 ${deletedCount} 笔订单（${notFoundCount} 笔不存在或已删除）`
           : `已删除 ${deletedCount} 笔订单`,
       deletedCount,
-      skippedCount,
-      skippedIds: result.skippedIds,
+      notFoundCount,
+      notFoundIds: result.notFoundIds,
     };
   } catch (error) {
     return {

@@ -67,14 +67,14 @@ describe("deleteAdminOrders", () => {
     expect(result.message).toContain("最多");
   });
 
-  it("should skip non-deletable orders and return error when none deletable", async () => {
+  it("should allow deleting completed orders", async () => {
     requireAdminMock.mockResolvedValueOnce({ user: { id: "a1", role: "admin" } });
 
     transactionMock.mockImplementationOnce(async (fn: (tx: unknown) => unknown) => {
       const tx = {
         select: vi.fn(() => ({
           from: vi.fn(() => ({
-            where: vi.fn(async () => [{ id: "o1", status: "completed" }]),
+            where: vi.fn(async () => [{ id: "o1" }]),
           })),
         })),
         update: vi.fn(() => ({
@@ -84,7 +84,7 @@ describe("deleteAdminOrders", () => {
         })),
         delete: vi.fn(() => ({
           where: vi.fn(() => ({
-            returning: vi.fn(async () => []),
+            returning: vi.fn(async () => [{ id: "o1" }]),
           })),
         })),
       };
@@ -93,12 +93,11 @@ describe("deleteAdminOrders", () => {
 
     const result = await deleteAdminOrders(["o1"]);
 
-    expect(result.success).toBe(false);
-    expect(result.deletedCount).toBe(0);
-    expect(result.skippedCount).toBe(1);
+    expect(result.success).toBe(true);
+    expect(result.deletedCount).toBe(1);
   });
 
-  it("should delete pending/expired orders and keep others skipped", async () => {
+  it("should report notFound ids when partially missing", async () => {
     requireAdminMock.mockResolvedValueOnce({ user: { id: "a1", role: "admin" } });
 
     const deleteCall = vi.fn(() => ({
@@ -112,9 +111,8 @@ describe("deleteAdminOrders", () => {
         select: vi.fn(() => ({
           from: vi.fn(() => ({
             where: vi.fn(async () => [
-              { id: "o1", status: "pending" },
-              { id: "o2", status: "expired" },
-              { id: "o3", status: "completed" },
+              { id: "o1" },
+              { id: "o2" },
             ]),
           })),
         })),
@@ -128,11 +126,11 @@ describe("deleteAdminOrders", () => {
       return fn(tx);
     });
 
-    const result = await deleteAdminOrders(["o1", "o2", "o3"]);
+    const result = await deleteAdminOrders(["o1", "o2", "missing"]);
 
     expect(result.success).toBe(true);
     expect(result.deletedCount).toBe(2);
-    expect(result.skippedCount).toBe(1);
+    expect(result.notFoundCount).toBe(1);
     expect(deleteCall).toHaveBeenCalledTimes(1);
     expect(revalidatePathMock).toHaveBeenCalled();
   });
