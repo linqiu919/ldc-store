@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { User, LogOut, Package, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -55,7 +55,12 @@ export function Header({ siteName = "LDC Store" }: HeaderProps) {
         <div className="flex items-center gap-2">
           {/* 桌面端搜索框 */}
           <div className="hidden md:block w-72">
-            <SearchBar />
+            {/* SearchBar 内部使用 useSearchParams，静态预渲染时会触发 CSR bailout；必须包在 Suspense 里避免 build 失败。 */}
+            <Suspense
+              fallback={<div className="h-9 w-full rounded-md bg-muted/60 animate-pulse" />}
+            >
+              <SearchBar />
+            </Suspense>
           </div>
 
           {/* 移动端搜索入口 */}
@@ -66,10 +71,12 @@ export function Header({ siteName = "LDC Store" }: HeaderProps) {
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-[calc(100vw-2rem)] max-w-sm p-3">
-              <SearchBar
-                autoFocus
-                onAfterSubmit={() => setMobileSearchOpen(false)}
-              />
+              <Suspense fallback={<div className="h-9 w-full rounded-md bg-muted/60 animate-pulse" />}>
+                <SearchBar
+                  autoFocus
+                  onAfterSubmit={() => setMobileSearchOpen(false)}
+                />
+              </Suspense>
             </PopoverContent>
           </Popover>
 

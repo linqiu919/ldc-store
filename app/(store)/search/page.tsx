@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Search, Package, ArrowLeft, ArrowRight } from "lucide-react";
@@ -102,7 +103,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         </p>
       </div>
 
-      <SearchBar className="max-w-xl" />
+      {/* SearchBar 内部使用 useSearchParams，静态预渲染时需要 Suspense 来兜底 CSR bailout。 */}
+      <Suspense fallback={<div className="h-9 w-full max-w-xl rounded-md bg-muted/60 animate-pulse" />}>
+        <SearchBar className="max-w-xl" />
+      </Suspense>
 
       {/* Category Filter */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
