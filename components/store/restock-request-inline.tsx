@@ -138,40 +138,48 @@ export function RestockRequestInline({
 
   return (
     <div className={cn("flex items-center justify-between gap-2", className)}>
-      <div className="flex min-w-0 items-center gap-2">
-        <div className={cn("shrink-0 tabular-nums text-muted-foreground", textClassName)}>
-          {count > 0 ? `${count} 人已催` : "还没人催"}
-        </div>
-
+      <div className="flex min-w-0 flex-col items-start gap-1">
         {count > 0 ? (
-          <div className="flex items-center -space-x-2">
-            {displayedRequesters.map((u) => (
-              <Avatar
-                key={u.userId}
-                className={cn(
-                  "ring-2 ring-background",
-                  avatarSizeClassName
-                )}
-              >
-                <AvatarImage src={u.userImage ?? undefined} alt={`${u.username} 的头像`} />
-                <AvatarFallback className="text-[10px] font-semibold text-muted-foreground">
-                  {(u.username || "?").slice(0, 1).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            ))}
-            {remainingCount > 0 ? (
-              <div
-                className={cn(
-                  "flex items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-background",
-                  avatarSizeClassName
-                )}
-                aria-label={`还有 ${remainingCount} 人已催补货`}
-              >
-                +{remainingCount}
-              </div>
-            ) : null}
+          <>
+            <div className="flex items-center -space-x-2">
+              {displayedRequesters.map((u) => (
+                <Avatar
+                  key={u.userId}
+                  className={cn(
+                    // 关键：显式 z-index，确保「+N」始终在最顶层（避免不同浏览器/渲染路径出现叠放差异）
+                    "z-0 ring-2 ring-background",
+                    avatarSizeClassName
+                  )}
+                >
+                  <AvatarImage src={u.userImage ?? undefined} alt={`${u.username} 的头像`} />
+                  <AvatarFallback className="text-[10px] font-semibold text-muted-foreground">
+                    {(u.username || "?").slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+              {remainingCount > 0 ? (
+                <div
+                  className={cn(
+                    // 关键：+N 代表“更多”，应该压在最上层，避免被头像遮挡
+                    "relative z-10 flex items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-background",
+                    avatarSizeClassName
+                  )}
+                  aria-label={`还有 ${remainingCount} 人已催补货`}
+                >
+                  +{remainingCount}
+                </div>
+              ) : null}
+            </div>
+
+            <div className={cn("tabular-nums text-muted-foreground", textClassName)}>
+              {count} 人已催
+            </div>
+          </>
+        ) : (
+          <div className={cn("tabular-nums text-muted-foreground", textClassName)}>
+            还没人催
           </div>
-        ) : null}
+        )}
       </div>
 
       <Button
