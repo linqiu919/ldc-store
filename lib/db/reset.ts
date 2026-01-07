@@ -66,7 +66,7 @@ async function reset() {
 
     console.log("\n🎉 数据库已完全清空!");
     console.log("\n📝 下一步:");
-    console.log("   1. 运行 pnpm db:push 创建新表结构");
+    console.log("   1. 运行 pnpm db:migrate 创建新表结构");
     console.log("   2. 运行 pnpm db:seed 初始化数据");
   } catch (error) {
     console.error("❌ 重置失败:", error);

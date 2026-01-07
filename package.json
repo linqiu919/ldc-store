@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push --force",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx lib/db/seed.ts",
+    "db:baseline": "tsx lib/db/baseline.ts",
     "db:reset": "tsx lib/db/reset.ts",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",

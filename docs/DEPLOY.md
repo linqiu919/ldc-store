@@ -93,7 +93,10 @@
 
 ### 步骤 5：初始化数据库
 
-> 提示：本仓库默认 `vercel.json` 在 **Production** 构建阶段会自动执行 `pnpm db:push`（Preview 不会执行），如果部署成功且数据库已建表，可跳过本步骤；若自动推表失败，再按以下方式手动执行。
+> 提示：本仓库默认 `vercel.json` 在 **Production** 构建阶段会自动执行 `pnpm db:baseline && pnpm db:migrate`（Preview 不会执行）。  
+> - 新库：`db:baseline` 会自动跳过，`db:migrate` 会创建表结构  
+> - 旧库：如果历史上用过 `db:push`，`db:baseline` 会写入迁移记录，避免 migrate 重复建表报错  
+> 若自动执行失败，再按以下方式手动执行。
 
 部署完成后，你需要初始化数据库表结构：
 
@@ -109,8 +112,9 @@ vercel login
 # 拉取环境变量
 vercel env pull .env.local
 
-# 推送数据库结构
-pnpm db:push
+# 初始化/迁移数据库结构
+pnpm db:baseline
+pnpm db:migrate
 ```
 
 **方式 B：本地运行迁移**
@@ -119,8 +123,9 @@ pnpm db:push
 # 设置 DATABASE_URL 环境变量
 export DATABASE_URL="你的数据库连接字符串"
 
-# 推送数据库结构
-pnpm db:push
+# 初始化/迁移数据库结构
+pnpm db:baseline
+pnpm db:migrate
 
 # 可选：导入示例数据
 pnpm db:seed
@@ -175,8 +180,12 @@ cp .env.example .env
 ### 步骤 4：初始化数据库
 
 ```bash
-# 推送表结构到数据库
-pnpm db:push
+# 新库：执行迁移创建表结构
+pnpm db:migrate
+
+# 旧库：如果历史上用过 db:push（没有迁移记录），先 baseline 再 migrate
+# pnpm db:baseline
+# pnpm db:migrate
 
 # 可选：导入示例数据
 pnpm db:seed

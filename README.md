@@ -62,7 +62,7 @@
 1. 点击上方 "Deploy with Vercel" 按钮
 2. 在 Vercel 中配置环境变量
 3. 等待部署完成
-4. 初始化数据库表结构（默认 Production 部署会自动执行 `pnpm db:push`，失败时再手动执行）
+4. 初始化数据库表结构（默认 Production 部署会自动执行 `pnpm db:baseline && pnpm db:migrate`，失败时再手动执行）
 
 ## 📦 本地开发
 
@@ -124,8 +124,12 @@ STATS_TIMEZONE="Asia/Shanghai"
 ### 3. 初始化数据库
 
 ```bash
-# 推送表结构到数据库
-pnpm db:push
+# 新库：执行迁移创建表结构
+pnpm db:migrate
+
+# 旧库：如果历史上用过 db:push（没有迁移记录），先 baseline 再 migrate
+# pnpm db:baseline
+# pnpm db:migrate
 
 # 初始化示例数据（可选）
 pnpm db:seed
@@ -300,10 +304,13 @@ ldc-store/
 # 生成迁移文件
 pnpm db:generate
 
-# 推送表结构（开发环境）
+# 旧库基线化（历史用过 db:push / 没有迁移记录时使用）
+pnpm db:baseline
+
+# 推送表结构（不推荐；会绕过迁移记录，后续 migrate 可能会失败）
 pnpm db:push
 
-# 运行迁移（生产环境）
+# 运行迁移（推荐：新库/生产环境都应使用）
 pnpm db:migrate
 
 # 打开数据库可视化工具
